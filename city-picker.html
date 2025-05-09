@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>省市区选择</title>
   <style>
-    select { margin: 5px; padding: 5px; }
+    select { margin: 5px; padding: 5px; width: 120px; }
   </style>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
@@ -21,10 +21,12 @@
   </label>
 
   <script>
-    const dataUrl = "https://githunter-007.github.io/cn_city-picker/list.json"; // 你的 JSON 链接
-
+    const dataUrl = "https://your-username.github.io/city-picker/list.json"; // 👈 修改为你的 GitHub Pages 链接
     let regionData = {};
-    let provinces = [];
+
+    function isDirectCity(code) {
+      return ['11', '12', '31', '50'].includes(code.slice(0, 2));
+    }
 
     function loadOptions($select, items) {
       $select.empty();
@@ -37,8 +39,16 @@
       return Object.entries(regionData)
         .filter(([code]) => {
           if (level === 'province') return code.endsWith('0000');
-          if (level === 'city') return code.startsWith(parentCode.slice(0, 2)) && code.endsWith('00') && !code.endsWith('0000');
-          if (level === 'area') return code.startsWith(parentCode.slice(0, 4)) && !code.endsWith('00');
+          if (level === 'city') return (
+            code.startsWith(parentCode.slice(0, 2)) &&
+            code.endsWith('00') &&
+            code !== parentCode &&
+            !code.endsWith('0000')
+          );
+          if (level === 'area') return (
+            code.startsWith(parentCode.slice(0, 4)) &&
+            !code.endsWith('00')
+          );
         })
         .map(([code, name]) => ({ code, name }));
     }
@@ -47,23 +57,36 @@
       const res = await fetch(dataUrl);
       regionData = await res.json();
 
-      provinces = getChildren('', 'province');
+      const provinces = getChildren('', 'province');
       loadOptions($('#province'), provinces);
+      $('#province').trigger('change');
 
       $('#province').on('change', function () {
-        const cities = getChildren(this.value, 'city');
-        loadOptions($('#city'), cities);
-        $('#city').trigger('change');
+        const provCode = this.value;
+
+        if (isDirectCity(provCode)) {
+          const cityName = regionData[provCode];
+          const districts = getChildren(provCode, 'area');
+
+          loadOptions($('#city'), [{ code: provCode, name: cityName }]);
+          loadOptions($('#area'), districts);
+        } else {
+          const cities = getChildren(provCode, 'city');
+          loadOptions($('#city'), cities);
+          $('#city').trigger('change');
+        }
       });
 
       $('#city').on('change', function () {
-        const areas = getChildren(this.value, 'area');
+        const cityCode = this.value;
+
+        if (isDirectCity(cityCode)) return;
+
+        const areas = getChildren(cityCode, 'area');
         loadOptions($('#area'), areas);
       });
 
-      $('#province').trigger('change');
-
-      // JotForm Widget API
+      // JotForm communication
       JFCustomWidget.subscribe("submit", function () {
         const provinceName = $('#province option:selected').text();
         const cityName = $('#city option:selected').text();
