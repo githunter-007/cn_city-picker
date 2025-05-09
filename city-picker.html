@@ -4,7 +4,11 @@
   <meta charset="UTF-8">
   <title>省市区选择</title>
   <style>
-    select { margin: 5px; padding: 5px; width: 130px; }
+    select {
+      margin: 5px;
+      padding: 5px;
+      width: 130px;
+    }
   </style>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
@@ -21,11 +25,11 @@
   </label>
 
   <script>
-    const dataUrl = "https://githunter-007.github.io/cn_city-picker/list.json"; // ⬅️ 替换为你实际部署的地址
+    const dataUrl = "https://githunter-007.github.io/cn_city-picker/list.json"; // ✅ 使用你已部署的地址
     let regionData = {};
 
     function isDirectCity(code) {
-      return ['11', '12', '31', '50'].includes(code.slice(0, 2));
+      return ['11', '12', '31', '50'].includes(code.slice(0, 2)); // 北京、天津、上海、重庆
     }
 
     function loadOptions($select, items) {
@@ -50,6 +54,7 @@
             );
           }
           if (level === 'area') {
+            // 特殊处理直辖市
             if (isDirectCity(parentCode)) {
               return (
                 code.startsWith(parentCode.slice(0, 2)) &&
@@ -68,20 +73,24 @@
     }
 
     $(async function () {
-      const res = await fetch(dataUrl);
-      regionData = await res.json();
+      try {
+        const res = await fetch(dataUrl);
+        regionData = await res.json();
 
-      const provinces = getChildren('', 'province');
-      loadOptions($('#province'), provinces);
-      $('#province').trigger('change');
+        const provinces = getChildren('', 'province');
+        loadOptions($('#province'), provinces);
+        $('#province').trigger('change');
+      } catch (err) {
+        alert("加载地区数据失败：" + err);
+      }
 
       $('#province').on('change', function () {
         const provCode = this.value;
 
         if (isDirectCity(provCode)) {
-          const cityName = regionData[provCode];
           const districts = getChildren(provCode, 'area');
-          loadOptions($('#city'), [{ code: provCode, name: cityName }]);
+          // 添加“市辖区”作为虚拟城市
+          loadOptions($('#city'), [{ code: provCode, name: '市辖区' }]);
           loadOptions($('#area'), districts);
         } else {
           const cities = getChildren(provCode, 'city');
