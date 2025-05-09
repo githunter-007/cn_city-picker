@@ -12,7 +12,6 @@
     #code-wrapper {
       margin-top: 10px;
       font-family: monospace;
-      display: none;
     }
   </style>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
@@ -84,12 +83,8 @@
 
     function updateCodeDisplay() {
       const area = $('#area option:selected');
-
       if (area.val()) {
         $('#area-code-input').val(area.val());
-        $('#code-wrapper').show();
-      } else {
-        $('#code-wrapper').hide();
       }
     }
 
@@ -122,15 +117,12 @@
           loadOptions($('#city'), cities);
           $('#city').trigger('change');
         }
-
-        $('#code-wrapper').hide();
       });
 
       $('#city').on('change', function () {
         const cityCode = this.value;
         const areas = getChildren(cityCode, 'area');
         loadOptions($('#area'), areas);
-        $('#code-wrapper').hide();
       });
 
       $('#area').on('change', function () {
