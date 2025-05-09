@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>省市区选择</title>
   <style>
-    select { margin: 5px; padding: 5px; width: 120px; }
+    select { margin: 5px; padding: 5px; width: 130px; }
   </style>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
@@ -21,7 +21,7 @@
   </label>
 
   <script>
-    const dataUrl = "https://githunter-007.github.io/cn_city-picker/list.json"; // 👈 修改为你的 GitHub Pages 链接
+    const dataUrl = "https://githunter-007.github.io/cn_city-picker/list.json"; // ⬅️ 替换为你实际部署的地址
     let regionData = {};
 
     function isDirectCity(code) {
@@ -38,17 +38,31 @@
     function getChildren(parentCode, level) {
       return Object.entries(regionData)
         .filter(([code]) => {
-          if (level === 'province') return code.endsWith('0000');
-          if (level === 'city') return (
-            code.startsWith(parentCode.slice(0, 2)) &&
-            code.endsWith('00') &&
-            code !== parentCode &&
-            !code.endsWith('0000')
-          );
-          if (level === 'area') return (
-            code.startsWith(parentCode.slice(0, 4)) &&
-            !code.endsWith('00')
-          );
+          if (level === 'province') {
+            return code.endsWith('0000');
+          }
+          if (level === 'city') {
+            return (
+              code.startsWith(parentCode.slice(0, 2)) &&
+              code.endsWith('00') &&
+              code !== parentCode &&
+              !code.endsWith('0000')
+            );
+          }
+          if (level === 'area') {
+            if (isDirectCity(parentCode)) {
+              return (
+                code.startsWith(parentCode.slice(0, 2)) &&
+                !code.endsWith('00') &&
+                !code.endsWith('0000')
+              );
+            } else {
+              return (
+                code.startsWith(parentCode.slice(0, 4)) &&
+                !code.endsWith('00')
+              );
+            }
+          }
         })
         .map(([code, name]) => ({ code, name }));
     }
@@ -67,7 +81,6 @@
         if (isDirectCity(provCode)) {
           const cityName = regionData[provCode];
           const districts = getChildren(provCode, 'area');
-
           loadOptions($('#city'), [{ code: provCode, name: cityName }]);
           loadOptions($('#area'), districts);
         } else {
@@ -79,14 +92,10 @@
 
       $('#city').on('change', function () {
         const cityCode = this.value;
-
-        if (isDirectCity(cityCode)) return;
-
         const areas = getChildren(cityCode, 'area');
         loadOptions($('#area'), areas);
       });
 
-      // JotForm communication
       JFCustomWidget.subscribe("submit", function () {
         const provinceName = $('#province option:selected').text();
         const cityName = $('#city option:selected').text();
