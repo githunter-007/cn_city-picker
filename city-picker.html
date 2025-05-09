@@ -25,7 +25,7 @@
   </label>
 
   <script>
-    const dataUrl = "https://githunter-007.github.io/cn_city-picker/list.json"; // ✅ 使用你已部署的地址
+    const dataUrl = "https://githunter-007.github.io/cn_city-picker/list.json"; // ✅ 你的 list.json 地址
     let regionData = {};
 
     function isDirectCity(code) {
@@ -54,7 +54,6 @@
             );
           }
           if (level === 'area') {
-            // 特殊处理直辖市
             if (isDirectCity(parentCode)) {
               return (
                 code.startsWith(parentCode.slice(0, 2)) &&
@@ -77,9 +76,17 @@
         const res = await fetch(dataUrl);
         regionData = await res.json();
 
-        const provinces = getChildren('', 'province');
+        // 获取省级（排除港澳台）
+        const provinces = getChildren('', 'province').filter(item => {
+          return !['71', '81', '82'].includes(item.code.slice(0, 2));
+        });
         loadOptions($('#province'), provinces);
-        $('#province').trigger('change');
+
+        // 等待绑定后再触发一次省份变化
+        setTimeout(() => {
+          $('#province').trigger('change');
+        }, 0);
+
       } catch (err) {
         alert("加载地区数据失败：" + err);
       }
@@ -89,7 +96,6 @@
 
         if (isDirectCity(provCode)) {
           const districts = getChildren(provCode, 'area');
-          // 添加“市辖区”作为虚拟城市
           loadOptions($('#city'), [{ code: provCode, name: '市辖区' }]);
           loadOptions($('#area'), districts);
         } else {
