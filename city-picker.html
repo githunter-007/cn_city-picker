@@ -9,7 +9,7 @@
       padding: 5px;
       width: 130px;
     }
-    #code-display {
+    #code-wrapper {
       margin-top: 10px;
       font-family: monospace;
       display: none;
@@ -29,7 +29,11 @@
     <select id="area"></select>
   </label>
 
-  <div id="code-display"></div>
+  <div id="code-wrapper">
+    <label>地区编码：
+      <input type="text" id="area-code-input" style="width: 140px;" />
+    </label>
+  </div>
 
   <script>
     const dataUrl = "https://githunter-007.github.io/cn_city-picker/list.json";
@@ -80,10 +84,12 @@
 
     function updateCodeDisplay() {
       const area = $('#area option:selected');
+
       if (area.val()) {
-        $('#code-display').html(`${area.text()} (${area.val()})`).show();
+        $('#area-code-input').val(area.val());
+        $('#code-wrapper').show();
       } else {
-        $('#code-display').hide();
+        $('#code-wrapper').hide();
       }
     }
 
@@ -117,14 +123,14 @@
           $('#city').trigger('change');
         }
 
-        $('#code-display').hide(); // 清除旧显示
+        $('#code-wrapper').hide();
       });
 
       $('#city').on('change', function () {
         const cityCode = this.value;
         const areas = getChildren(cityCode, 'area');
         loadOptions($('#area'), areas);
-        $('#code-display').hide();
+        $('#code-wrapper').hide();
       });
 
       $('#area').on('change', function () {
@@ -135,7 +141,7 @@
         const provinceName = $('#province option:selected').text();
         const cityName = $('#city option:selected').text();
         const areaName = $('#area option:selected').text();
-        const areaCode = $('#area option:selected').val();
+        const areaCode = $('#area-code-input').val().trim();
 
         JFCustomWidget.sendSubmit({
           valid: true,
