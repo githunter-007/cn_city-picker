@@ -2,74 +2,79 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <title>省市区三级联动</title>
+  <title>省市区选择</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 10px;
-    }
-    select {
-      margin-right: 10px;
-      padding: 5px;
-    }
+    select { margin: 5px; padding: 5px; }
   </style>
-
-  <!-- jQuery -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-  <!-- Citys 插件（可本地托管，以下链接需替换为你部署的）-->
-  <script src="https://passer-by.com/data_location/jquery.citys.js"></script>
-
-  <!-- JotForm Widget API -->
   <script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
 </head>
 <body>
-  <label for="province">省：</label>
-  <select id="province"></select>
-
-  <label for="city">市：</label>
-  <select id="city"></select>
-
-  <label for="area">区：</label>
-  <select id="area"></select>
+  <label>省：
+    <select id="province"></select>
+  </label>
+  <label>市：
+    <select id="city"></select>
+  </label>
+  <label>区：
+    <select id="area"></select>
+  </label>
 
   <script>
-    $(function () {
-      // 初始化城市联动插件
-      $("#province").parent().citys({
-        dataUrl: "https://githunter-007.github.io/cn_city-picker/list.json", // 官方已部署好的 JSON 数据
-        nodata: "none",
-        required: true,
-        province: "北京市", // 默认省份，可自定义
-        city: "市辖区",
-        area: ""
+    const dataUrl = "https://githunter-007.github.io/cn_city-picker/list.json"; // 你的 JSON 链接
+
+    let regionData = {};
+    let provinces = [];
+
+    function loadOptions($select, items) {
+      $select.empty();
+      items.forEach(item => {
+        $select.append(`<option value="${item.code}">${item.name}</option>`);
+      });
+    }
+
+    function getChildren(parentCode, level) {
+      return Object.entries(regionData)
+        .filter(([code]) => {
+          if (level === 'province') return code.endsWith('0000');
+          if (level === 'city') return code.startsWith(parentCode.slice(0, 2)) && code.endsWith('00') && !code.endsWith('0000');
+          if (level === 'area') return code.startsWith(parentCode.slice(0, 4)) && !code.endsWith('00');
+        })
+        .map(([code, name]) => ({ code, name }));
+    }
+
+    $(async function () {
+      const res = await fetch(dataUrl);
+      regionData = await res.json();
+
+      provinces = getChildren('', 'province');
+      loadOptions($('#province'), provinces);
+
+      $('#province').on('change', function () {
+        const cities = getChildren(this.value, 'city');
+        loadOptions($('#city'), cities);
+        $('#city').trigger('change');
       });
 
-      // 监听 JotForm 的 ready 和 submit 事件
-      JFCustomWidget.subscribe("ready", function () {
-        // nothing to init here for now
+      $('#city').on('change', function () {
+        const areas = getChildren(this.value, 'area');
+        loadOptions($('#area'), areas);
       });
 
+      $('#province').trigger('change');
+
+      // JotForm Widget API
       JFCustomWidget.subscribe("submit", function () {
-        var province = $("#province").val();
-        var city = $("#city").val();
-        var area = $("#area").val();
+        const provinceName = $('#province option:selected').text();
+        const cityName = $('#city option:selected').text();
+        const areaName = $('#area option:selected').text();
 
-        // 检查字段是否都选择
-        if (!province || !city || !area) {
-          JFCustomWidget.sendSubmit({
-            valid: false
-          });
-          return;
-        }
-
-        // 发送结果回 JotForm
         JFCustomWidget.sendSubmit({
           valid: true,
           value: {
-            province: province,
-            city: city,
-            area: area
+            province: provinceName,
+            city: cityName,
+            area: areaName
           }
         });
       });
