@@ -9,6 +9,11 @@
       padding: 5px;
       width: 130px;
     }
+    #code-display {
+      margin-top: 10px;
+      font-family: monospace;
+      display: none;
+    }
   </style>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://js.jotform.com/JotFormCustomWidget.min.js"></script>
@@ -24,12 +29,14 @@
     <select id="area"></select>
   </label>
 
+  <div id="code-display"></div>
+
   <script>
-    const dataUrl = "https://githunter-007.github.io/cn_city-picker/list.json"; // ✅ 你的 list.json 地址
+    const dataUrl = "https://githunter-007.github.io/cn_city-picker/list.json";
     let regionData = {};
 
     function isDirectCity(code) {
-      return ['11', '12', '31', '50'].includes(code.slice(0, 2)); // 北京、天津、上海、重庆
+      return ['11', '12', '31', '50'].includes(code.slice(0, 2));
     }
 
     function loadOptions($select, items) {
@@ -71,22 +78,28 @@
         .map(([code, name]) => ({ code, name }));
     }
 
+    function updateCodeDisplay() {
+      const area = $('#area option:selected');
+      if (area.val()) {
+        $('#code-display').html(`${area.text()} (${area.val()})`).show();
+      } else {
+        $('#code-display').hide();
+      }
+    }
+
     $(async function () {
       try {
         const res = await fetch(dataUrl);
         regionData = await res.json();
 
-        // 获取省级（排除港澳台）
         const provinces = getChildren('', 'province').filter(item => {
           return !['71', '81', '82'].includes(item.code.slice(0, 2));
         });
         loadOptions($('#province'), provinces);
 
-        // 等待绑定后再触发一次省份变化
         setTimeout(() => {
           $('#province').trigger('change');
         }, 0);
-
       } catch (err) {
         alert("加载地区数据失败：" + err);
       }
@@ -103,25 +116,34 @@
           loadOptions($('#city'), cities);
           $('#city').trigger('change');
         }
+
+        $('#code-display').hide(); // 清除旧显示
       });
 
       $('#city').on('change', function () {
         const cityCode = this.value;
         const areas = getChildren(cityCode, 'area');
         loadOptions($('#area'), areas);
+        $('#code-display').hide();
+      });
+
+      $('#area').on('change', function () {
+        updateCodeDisplay();
       });
 
       JFCustomWidget.subscribe("submit", function () {
         const provinceName = $('#province option:selected').text();
         const cityName = $('#city option:selected').text();
         const areaName = $('#area option:selected').text();
+        const areaCode = $('#area option:selected').val();
 
         JFCustomWidget.sendSubmit({
           valid: true,
           value: {
             province: provinceName,
             city: cityName,
-            area: areaName
+            area: areaName,
+            area_code: areaCode
           }
         });
       });
