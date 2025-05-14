@@ -9,7 +9,7 @@
       padding: 5px;
       width: 130px;
     }
-    #code-wrapper {
+    #zipcode-wrapper {
       margin-top: 10px;
       font-family: monospace;
     }
@@ -28,122 +28,86 @@
     <select id="area"></select>
   </label>
 
-  <div id="code-wrapper">
-    <label>地区编码：
-      <input type="text" id="area-code-input" style="width: 140px;" />
+  <div id="zipcode-wrapper">
+    <label>邮政编码：
+      <input type="text" id="zipcode-input" style="width: 140px;" />
     </label>
   </div>
 
   <script>
-    const dataUrl = "https://githunter-007.github.io/cn_city-picker/list.json";
-    let regionData = {};
-
-    function isDirectCity(code) {
-      return ['11', '12', '31', '50'].includes(code.slice(0, 2));
-    }
-
-    function loadOptions($select, items) {
-      $select.empty();
-      items.forEach(item => {
-        $select.append(`<option value="${item.code}">${item.name}</option>`);
-      });
-    }
-
-    function getChildren(parentCode, level) {
-      return Object.entries(regionData)
-        .filter(([code]) => {
-          if (level === 'province') {
-            return code.endsWith('0000');
-          }
-          if (level === 'city') {
-            return (
-              code.startsWith(parentCode.slice(0, 2)) &&
-              code.endsWith('00') &&
-              code !== parentCode &&
-              !code.endsWith('0000')
-            );
-          }
-          if (level === 'area') {
-            if (isDirectCity(parentCode)) {
-              return (
-                code.startsWith(parentCode.slice(0, 2)) &&
-                !code.endsWith('00') &&
-                !code.endsWith('0000')
-              );
-            } else {
-              return (
-                code.startsWith(parentCode.slice(0, 4)) &&
-                !code.endsWith('00')
-              );
-            }
-          }
-        })
-        .map(([code, name]) => ({ code, name }));
-    }
-
-    function updateCodeDisplay() {
-      const area = $('#area option:selected');
-      if (area.val()) {
-        $('#area-code-input').val(area.val());
-      }
-    }
+    const dataUrl = "https://githunter-007.github.io/cn_city-picker/cn_postcode"; 
+    let zipData = [];
 
     $(async function () {
       try {
         const res = await fetch(dataUrl);
-        regionData = await res.json();
+        zipData = await res.json();
 
-        const provinces = getChildren('', 'province').filter(item => {
-          return !['71', '81', '82'].includes(item.code.slice(0, 2));
-        });
-        loadOptions($('#province'), provinces);
-
-        setTimeout(() => {
-          $('#province').trigger('change');
-        }, 0);
+        const provinces = zipData.map(item => ({ name: item.name }));
+        loadOptions($("#province"), provinces);
+        $('#province').trigger('change');
       } catch (err) {
         alert("加载地区数据失败：" + err);
       }
+    });
 
-      $('#province').on('change', function () {
-        const provCode = this.value;
+    function loadOptions($select, items) {
+      $select.empty();
+      items.forEach(item => {
+        $select.append(`<option value="${item.name}">${item.name}</option>`);
+      });
+    }
 
-        if (isDirectCity(provCode)) {
-          const districts = getChildren(provCode, 'area');
-          loadOptions($('#city'), [{ code: provCode, name: '市辖区' }]);
-          loadOptions($('#area'), districts);
-        } else {
-          const cities = getChildren(provCode, 'city');
-          loadOptions($('#city'), cities);
-          $('#city').trigger('change');
+    $('#province').on('change', function () {
+      const provName = this.value;
+      const province = zipData.find(p => p.name === provName);
+      if (!province || !province.child) return;
+
+      const cities = province.child.map(c => ({ name: c.name }));
+      loadOptions($('#city'), cities);
+      $('#city').trigger('change');
+    });
+
+    $('#city').on('change', function () {
+      const provName = $('#province').val();
+      const cityName = $('#city').val();
+      const province = zipData.find(p => p.name === provName);
+      const city = province?.child.find(c => c.name === cityName);
+      if (!city || !city.child) return;
+
+      const areas = city.child.map(a => ({ name: a.name, zipcode: a.zipcode }));
+      loadOptions($('#area'), areas);
+      $('#area').trigger('change');
+    });
+
+    $('#area').on('change', function () {
+      const provName = $('#province').val();
+      const cityName = $('#city').val();
+      const areaName = $('#area').val();
+
+      const province = zipData.find(p => p.name === provName);
+      const city = province?.child.find(c => c.name === cityName);
+      const area = city?.child.find(a => a.name === areaName);
+
+      if (area && area.zipcode) {
+        $('#zipcode-input').val(area.zipcode);
+      }
+    });
+
+    JFCustomWidget.subscribe("submit", function () {
+      const province = $('#province').val();
+      const city = $('#city').val();
+      const area = $('#area').val();
+      const zipcode = $('#zipcode-input').val().trim();
+
+      JFCustomWidget.sendSubmit({
+        valid: true,
+        value: {
+          province: province,
+          city: city,
+          area: area,
+          zipcode: zipcode
         }
-      });
-
-      $('#city').on('change', function () {
-        const cityCode = this.value;
-        const areas = getChildren(cityCode, 'area');
-        loadOptions($('#area'), areas);
-      });
-
-      $('#area').on('change', function () {
-        updateCodeDisplay();
-      });
-
-      JFCustomWidget.subscribe("submit", function () {
-        const provinceName = $('#province option:selected').text();
-        const cityName = $('#city option:selected').text();
-        const areaName = $('#area option:selected').text();
-        const areaCode = $('#area-code-input').val().trim();
-
-        JFCustomWidget.sendSubmit({
-          valid: true,
-          value: {
-            province: provinceName,
-            city: cityName,
-            area: areaName,
-            area_code: areaCode
-          }
-        });
       });
     });
   </script>
